@@ -1,8 +1,11 @@
-# requirements.txt
-flask==3.0.0
-ultralytics==8.1.0
-opencv-python==4.8.1.78
-numpy==1.24.3
-twilio==8.10.0
-python-dotenv==1.0.0
-pillow==10.1.0
+Flask==3.0.3
+gunicorn==23.0.0
+ultralytics==8.3.0
+opencv-python-headless==4.10.0.84
+numpy==1.26.4
+pillow==10.4.0
+python-dotenv==1.0.1
+twilio==9.2.3
+requests==2.32.3
+setuptools>=70.0.0
+wheel
