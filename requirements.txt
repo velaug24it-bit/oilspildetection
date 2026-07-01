@@ -1,0 +1,9 @@
+# requirements.txt
+flask==3.0.0
+ultralytics==8.1.0
+opencv-python==4.8.1.78
+numpy==1.24.3
+twilio==8.10.0
+python-dotenv==1.0.0
+pillow==10.1.0
+python==3.11.0

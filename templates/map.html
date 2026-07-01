@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marine Traffic & Pollution Detection Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a2a6c, #2a4b8c, #3a6bc0);
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .header-left {
+            flex: 1;
+            text-align: left;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .btn-primary { background: #1a2a6c; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-warning { background: #ffc107; color: #333; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-info { background: #17a2b8; color: white; }
+
+        .map-container {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        #marineMap {
+            height: 600px;
+            width: 100%;
+            border-radius: 15px;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        .stat-card h3 {
+            color: #2a4b8c;
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #1a2a6c;
+        }
+
+        .controls {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            color: #1a2a6c;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .ocean-filters, .ship-type-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .ocean-btn, .ship-type-btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .ocean-btn {
+            background: #e9ecef;
+            color: #495057;
+        }
+
+        .ocean-btn.active {
+            background: #1a2a6c;
+            color: white;
+        }
+
+        .ship-type-btn {
+            border: 2px solid #1a2a6c;
+            background: white;
+            color: #1a2a6c;
+        }
+
+        .ship-type-btn.active {
+            background: #1a2a6c;
+            color: white;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #2a4b8c;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #1a2a6c;
+        }
+
+        .coord-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .file-upload {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 12px;
+            background: #e9ecef;
+            border: 2px dashed #1a2a6c;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .file-upload:hover {
+            background: #dee2e6;
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+            max-width: 250px;
+        }
+
+        .legend h4 {
+            margin-bottom: 10px;
+            color: #1a2a6c;
+            font-size: 1.1rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .legend-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .toast {
+            position: fixed;
+            top: 100px;
+            right: 30px;
+            min-width: 300px;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            z-index: 4000;
+            animation: slideIn 0.3s ease;
+            border-left: 4px solid;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .toast-success { border-left-color: #28a745; }
+        .toast-danger { border-left-color: #dc3545; }
+        .toast-warning { border-left-color: #ffc107; }
+        .toast-info { border-left-color: #17a2b8; }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 2000;
+            background: rgba(255,255,255,0.95);
+            padding: 30px 50px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #e9ecef;
+            border-top-color: #1a2a6c;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes markerPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        @media (max-width: 768px) {
+            .header h1 { font-size: 1.8rem; }
+            #marineMap { height: 400px; }
+            .dashboard { grid-template-columns: 1fr; }
+            .legend { position: relative; bottom: auto; right: auto; margin-top: 20px; max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-left">
+                <h1><i class="fas fa-water"></i> Ocean Ship Tracking & Pollution Detection</h1>
+                <p>Real-time monitoring of marine traffic and pollution incidents across world oceans</p>
+            </div>
+            <div class="action-buttons">
+                <button class="btn btn-info" onclick="centerMap()">
+                    <i class="fas fa-crosshairs"></i> Center
+                </button>
+                <button class="btn btn-success" onclick="autoDetection()">
+                    <i class="fas fa-robot"></i> Auto
+                </button>
+                <button class="btn btn-warning" onclick="exportData()">
+                    <i class="fas fa-download"></i> Export
+                </button>
+                <button class="btn btn-danger" onclick="clearAll()">
+                    <i class="fas fa-trash-alt"></i> Clear
+                </button>
+            </div>
+        </div>
+
+        <div class="dashboard">
+            <div class="stat-card" onclick="filterType('all')">
+                <h3><i class="fas fa-ship"></i> Total Ships Tracked</h3>
+                <div class="stat-number" id="totalShips">0</div>
+            </div>
+            <div class="stat-card" onclick="filterType('oil')">
+                <h3><i class="fas fa-oil-can"></i> Oil Spills Detected</h3>
+                <div class="stat-number" id="oilSpills">0</div>
+            </div>
+            <div class="stat-card" onclick="filterType('ship')">
+                <h3><i class="fas fa-exclamation-triangle"></i> Custom Detections</h3>
+                <div class="stat-number" id="customDetections">0</div>
+            </div>
+            <div class="stat-card">
+                <h3><i class="fas fa-dollar-sign"></i> Total Fines</h3>
+                <div class="stat-number" id="totalFines">$0</div>
+            </div>
+            <div class="stat-card">
+                <h3><i class="fas fa-map-marker-alt"></i> Active Regions</h3>
+                <div class="stat-number" id="activeRegions">7</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="section-title">
+                <i class="fas fa-crosshairs"></i> Add Custom Detection
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Detection Type</label>
+                <select class="form-control" id="detectionType">
+                    <option value="oil">🛢 Oil Spill (Critical)</option>
+                    <option value="ship">🚢 Vessel Detection</option>
+                    <option value="debris">🗑 Marine Debris</option>
+                    <option value="algae">🌿 Algae Bloom</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Severity Level</label>
+                <select class="form-control" id="severity">
+                    <option value="critical">🔴 Critical (>1000 barrels)</option>
+                    <option value="high">🟠 High (500-1000 barrels)</option>
+                    <option value="medium">🟡 Medium (100-500 barrels)</option>
+                    <option value="low">🟢 Low (<100 barrels)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">GPS Coordinates</label>
+                <div class="coord-grid">
+                    <input type="number" class="form-control" id="lat" placeholder="Latitude" value="18.523456" step="0.000001">
+                    <input type="number" class="form-control" id="lng" placeholder="Longitude" value="71.467890" step="0.000001">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Upload Evidence Image</label>
+                <input type="file" id="img" accept="image/*" style="display:none;" onchange="handleImg(event)">
+                <label for="img" class="file-upload">
+                    <i class="fas fa-camera"></i> Upload Satellite/Drone Image
+                </label>
+            </div>
+
+            <button class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:10px;" onclick="addCustomMarker()">
+                <i class="fas fa-plus-circle"></i> Add Detection
+            </button>
+
+            <button class="btn btn-success" style="width:100%;justify-content:center;" onclick="randomCoords()">
+                <i class="fas fa-dice"></i> Generate Random Coordinates
+            </button>
+
+            <div class="section-title" style="margin-top:20px;">
+                <i class="fas fa-filter"></i> Ocean Filters
+            </div>
+            <div class="ocean-filters">
+                <button class="ocean-btn active" data-ocean="all">All Oceans</button>
+                <button class="ocean-btn" data-ocean="pacific">Pacific Ocean</button>
+                <button class="ocean-btn" data-ocean="atlantic">Atlantic Ocean</button>
+                <button class="ocean-btn" data-ocean="indian">Indian Ocean</button>
+                <button class="ocean-btn" data-ocean="arctic">Arctic Ocean</button>
+                <button class="ocean-btn" data-ocean="antarctic">Southern Ocean</button>
+                <button class="ocean-btn" data-ocean="bay-of-bengal">Bay of Bengal</button>
+                <button class="ocean-btn" data-ocean="arabian">Arabian Sea</button>
+            </div>
+
+            <div class="section-title">
+                <i class="fas fa-ship"></i> Ship Type Filters
+            </div>
+            <div class="ship-type-filters">
+                <button class="ship-type-btn active" data-type="all">All Ships</button>
+                <button class="ship-type-btn" data-type="cargo">Cargo</button>
+                <button class="ship-type-btn" data-type="tanker">Tanker</button>
+                <button class="ship-type-btn" data-type="passenger">Passenger</button>
+                <button class="ship-type-btn" data-type="fishing">Fishing</button>
+                <button class="ship-type-btn" data-type="navy">Navy</button>
+            </div>
+
+            <div class="section-title" style="margin-top:20px;">
+                <i class="fas fa-map-marked-alt"></i> Quick Ocean Zones
+            </div>
+            <div style="display:grid;gap:10px;">
+                <button class="btn btn-info" onclick="setLoc(18.523456,71.467890)">
+                    <i class="fas fa-location-arrow"></i> Arabian Sea - Mumbai Coast
+                </button>
+                <button class="btn btn-info" onclick="setLoc(35.234123,-39.876543)">
+                    <i class="fas fa-location-arrow"></i> N. Atlantic - Mid-Ocean Ridge
+                </button>
+                <button class="btn btn-info" onclick="setLoc(30.456789,169.890123)">
+                    <i class="fas fa-location-arrow"></i> N. Pacific - Deep Sea Zone
+                </button>
+                <button class="btn btn-info" onclick="setLoc(-23.456789,56.789012)">
+                    <i class="fas fa-location-arrow"></i> Indian Ocean - Central Basin
+                </button>
+            </div>
+        </div>
+
+        <div class="map-container">
+            <div id="marineMap"></div>
+            <div id="loading" class="loading" style="display:none;">
+                <div class="loading-spinner"></div>
+                <div style="font-weight:700;color:#1a2a6c;">Processing Detection...</div>
+            </div>
+            <div class="legend">
+                <h4>Map Legend</h4>
+                <div class="legend-item">
+                    <i class="fas fa-ship" style="color:#1a2a6c;font-size:20px;margin-right:10px;"></i>
+                    <span>Commercial Ship</span>
+                </div>
+                <div class="legend-item">
+                    <i class="fas fa-ship" style="color:#28a745;font-size:20px;margin-right:10px;"></i>
+                    <span>Passenger Ship</span>
+                </div>
+                <div class="legend-item">
+                    <i class="fas fa-ship" style="color:#fd7e14;font-size:20px;margin-right:10px;"></i>
+                    <span>Tanker Ship</span>
+                </div>
+                <div class="legend-item">
+                    <i class="fas fa-ship" style="color:#6f42c1;font-size:20px;margin-right:10px;"></i>
+                    <span>Fishing Vessel</span>
+                </div>
+                <div class="legend-item">
+                    <i class="fas fa-ship" style="color:#dc3545;font-size:20px;margin-right:10px;"></i>
+                    <span>Navy Ship</span>
+                </div>
+                <div class="legend-item">
+                    <i class="fas fa-oil-can" style="color:#dc3545;font-size:20px;margin-right:10px;"></i>
+                    <span>Oil Spill</span>
+                </div>
+                <div class="legend-item">
+                    <i class="fas fa-exclamation-triangle" style="color:#ffc107;font-size:20px;margin-right:10px;"></i>
+                    <span>Ship Accident</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let map, shipMarkers = [], pollutionMarkers = [], customMarkers = [];
+        let uploadImg = null, autoInterval = null;
+        let oilCount = 0, customCount = 0, fineTotal = 0;
+
+        // Initialize the map
+        map = L.map('marineMap').setView([20, 0], 2);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Ocean boundaries
+        const oceanBoundaries = {
+            'pacific': [[65, -180], [65, -90], [65, 0], [65, 90], [65, 180], [-60, 180], [-60, 90], [-60, 0], [-60, -90], [-60, -180]],
+            'atlantic': [[65, -80], [65, -40], [65, 0], [65, 20], [65, 40], [-60, 40], [-60, 20], [-60, 0], [-60, -40], [-60, -80]],
+            'indian': [[25, 20], [25, 40], [25, 100], [25, 120], [-60, 120], [-60, 100], [-60, 40], [-60, 20]],
+            'arctic': [[90, -180], [90, -90], [90, 0], [90, 90], [90, 180], [65, 180], [65, 90], [65, 0], [65, -90], [65, -180]],
+            'antarctic': [[-60, -180], [-60, -90], [-60, 0], [-60, 90], [-60, 180], [-90, 180], [-90, 90], [-90, 0], [-90, -90], [-90, -180]],
+            'bay-of-bengal': [[22, 80], [22, 100], [5, 100], [5, 80]],
+            'arabian': [[25, 40], [25, 80], [5, 80], [5, 40]]
+        };
+
+        const oceanLabels = {
+            'pacific': { lat: 0, lng: -140, name: 'PACIFIC OCEAN' },
+            'atlantic': { lat: 0, lng: -30, name: 'ATLANTIC OCEAN' },
+            'indian': { lat: -20, lng: 80, name: 'INDIAN OCEAN' },
+            'arctic': { lat: 80, lng: 0, name: 'ARCTIC OCEAN' },
+            'antarctic': { lat: -80, lng: 0, name: 'SOUTHERN OCEAN' },
+            'bay-of-bengal': { lat: 15, lng: 90, name: 'BAY OF BENGAL' },
+            'arabian': { lat: 15, lng: 65, name: 'ARABIAN SEA' }
+        };
+
+        // Draw ocean boundaries
+        for (const ocean in oceanBoundaries) {
+            L.polygon(oceanBoundaries[ocean], {
+                color: '#1a2a6c',
+                weight: 2,
+                fillOpacity: 0.05,
+                dashArray: '10,10'
+            }).addTo(map);
+            
+            const label = oceanLabels[ocean];
+            L.marker([label.lat, label.lng], {
+                icon: L.divIcon({
+                    html: `<div style="font-weight:bold;color:#1a2a6c;text-shadow:1px 1px 2px white;font-size:14px;white-space:nowrap;">${label.name}</div>`,
+                    iconSize: [150, 40],
+                    className: ''
+                })
+            }).addTo(map);
+        }
+
+        // Sample ship data
+        const ships = [
+            { id: 1, name: "Pacific Trader", type: "cargo", lat: 35, lng: -160, ocean: "pacific", details: "Container Ship<br>Length: 250m<br>Cargo: Electronics<br>Status: In Transit" },
+            { id: 2, name: "Ocean Princess", type: "passenger", lat: 20, lng: -150, ocean: "pacific", details: "Cruise Ship<br>Passengers: 2000<br>Destination: Hawaii<br>Status: On Route" },
+            { id: 3, name: "Pacific Explorer", type: "tanker", lat: 10, lng: -170, ocean: "pacific", details: "Oil Tanker<br>Capacity: 300,000 tons<br>Cargo: Crude Oil<br>Status: Loading" },
+            { id: 4, name: "Deep Sea Fisher", type: "fishing", lat: -10, lng: -140, ocean: "pacific", details: "Fishing Vessel<br>Catch: Tuna<br>License: Valid<br>Status: Fishing" },
+            { id: 5, name: "USS Pacific", type: "navy", lat: 15, lng: -130, ocean: "pacific", details: "Navy Destroyer<br>Country: USA<br>Mission: Patrol<br>Status: Active" },
+            { id: 6, name: "Atlantic Carrier", type: "cargo", lat: 30, lng: -50, ocean: "atlantic", details: "Bulk Carrier<br>Length: 300m<br>Cargo: Grain<br>Status: In Transit" },
+            { id: 7, name: "Queen Atlantic", type: "passenger", lat: 25, lng: -40, ocean: "atlantic", details: "Luxury Liner<br>Passengers: 1500<br>Destination: Caribbean<br>Status: On Route" },
+            { id: 8, name: "Atlantic Titan", type: "tanker", lat: 10, lng: -30, ocean: "atlantic", details: "LNG Tanker<br>Capacity: 150,000 m³<br>Cargo: LNG<br>Status: Unloading" },
+            { id: 9, name: "North Atlantic Fisher", type: "fishing", lat: 45, lng: -20, ocean: "atlantic", details: "Trawler<br>Catch: Cod<br>License: Valid<br>Status: Fishing" },
+            { id: 10, name: "HMS Defender", type: "navy", lat: 35, lng: -10, ocean: "atlantic", details: "Frigate<br>Country: UK<br>Mission: Training<br>Status: Active" },
+            { id: 11, name: "Indian Trader", type: "cargo", lat: -10, lng: 70, ocean: "indian", details: "Container Ship<br>Length: 280m<br>Cargo: Textiles<br>Status: In Transit" },
+            { id: 12, name: "Indian Explorer", type: "passenger", lat: -5, lng: 80, ocean: "indian", details: "Cruise Ship<br>Passengers: 1800<br>Destination: Maldives<br>Status: On Route" },
+            { id: 13, name: "Indian Titan", type: "tanker", lat: -15, lng: 60, ocean: "indian", details: "Oil Tanker<br>Capacity: 250,000 tons<br>Cargo: Crude Oil<br>Status: Loading" },
+            { id: 14, name: "Bengal Trader", type: "cargo", lat: 15, lng: 90, ocean: "bay-of-bengal", details: "Container Ship<br>Length: 220m<br>Cargo: Rice<br>Status: In Transit" },
+            { id: 15, name: "Bengal Fisher", type: "fishing", lat: 18, lng: 92, ocean: "bay-of-bengal", details: "Fishing Vessel<br>Catch: Shrimp<br>License: Valid<br>Status: Fishing" },
+            { id: 16, name: "Arabian Trader", type: "cargo", lat: 15, lng: 65, ocean: "arabian", details: "Container Ship<br>Length: 240m<br>Cargo: Oil Equipment<br>Status: In Transit" },
+            { id: 17, name: "Arabian Tanker", type: "tanker", lat: 18, lng: 68, ocean: "arabian", details: "Oil Tanker<br>Capacity: 200,000 tons<br>Cargo: Crude Oil<br>Status: Loading" }
+        ];
+
+        const pollutionIncidents = [
+            { id: 1, type: "oil-spill", lat: 25, lng: -155, ocean: "pacific", details: "Oil Spill Incident<br>Date: 2023-10-15<br>Estimated Volume: 5000 barrels<br>Status: Contained" },
+            { id: 2, type: "oil-spill", lat: 35, lng: -25, ocean: "atlantic", details: "Oil Spill Incident<br>Date: 2023-11-02<br>Estimated Volume: 8000 barrels<br>Status: Ongoing Cleanup" },
+            { id: 3, type: "oil-spill", lat: -10, lng: 75, ocean: "indian", details: "Oil Spill Incident<br>Date: 2023-09-28<br>Estimated Volume: 3000 barrels<br>Status: Contained" },
+            { id: 4, type: "ship-accident", lat: 20, lng: -140, ocean: "pacific", details: "Ship Collision<br>Date: 2023-10-20<br>Ships Involved: 2<br>Status: Investigation" },
+            { id: 5, type: "ship-accident", lat: 30, lng: -45, ocean: "atlantic", details: "Ship Grounding<br>Date: 2023-11-05<br>Damage: Moderate<br>Status: Salvage Operation" }
+        ];
+
+        function createShipIcon(type) {
+            const colors = {cargo:'#1a2a6c',passenger:'#28a745',tanker:'#fd7e14',fishing:'#6f42c1',navy:'#dc3545',research:'#17a2b8'};
+            return L.divIcon({
+                className: 'ship-icon',
+                html: `<i class="fas fa-ship" style="color:${colors[type]||'#6c757d'};font-size:24px;"></i>`,
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            });
+        }
+
+        function createPollutionIcon(type) {
+            const iconClass = type === 'oil-spill' ? 'fas fa-oil-can' : 'fas fa-exclamation-triangle';
+            const color = type === 'oil-spill' ? '#dc3545' : '#ffc107';
+            return L.divIcon({
+                className: 'pollution-icon',
+                html: `<i class="${iconClass}" style="color:${color};font-size:24px;"></i>`,
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            });
+        }
+
+        // Add ships to map
+        ships.forEach(ship => {
+            const marker = L.marker([ship.lat, ship.lng], {
+                icon: createShipIcon(ship.type)
+            }).addTo(map);
+            
+            marker.bindPopup(`
+                <div style="min-width:250px;">
+                    <h4>${ship.name}</h4>
+                    <p><strong>Type:</strong> ${ship.type.charAt(0).toUpperCase() + ship.type.slice(1)} Ship</p>
+                    <p><strong>Ocean:</strong> ${ship.ocean.charAt(0).toUpperCase() + ship.ocean.slice(1).replace(/-/g, ' ')}</p>
+                    <div>${ship.details}</div>
+                </div>
+            `);
+            
+            marker.shipData = ship;
+            shipMarkers.push(marker);
+        });
+
+        // Add pollution incidents
+        pollutionIncidents.forEach(incident => {
+            const marker = L.marker([incident.lat, incident.lng], {
+                icon: createPollutionIcon(incident.type)
+            }).addTo(map);
+            
+            marker.bindPopup(`
+                <div style="min-width:250px;">
+                    <h4>${incident.type === 'oil-spill' ? 'Oil Spill' : 'Ship Accident'}</h4>
+                    <p><strong>Ocean:</strong> ${incident.ocean.charAt(0).toUpperCase() + incident.ocean.slice(1).replace(/-/g, ' ')}</p>
+                    <div>${incident.details}</div>
+                </div>
+            `);
+            
+            marker.incidentData = incident;
+            pollutionMarkers.push(marker);
+        });
+
+        // Update initial stats
+        oilCount = pollutionIncidents.filter(i => i.type === 'oil-spill').length;
+        updateStats();
+
+        // Add custom detection marker
+        function addCustomMarker() {
+            showLoading(true);
+            setTimeout(() => {
+                const lat = parseFloat(document.getElementById('lat').value);
+                const lng = parseFloat(document.getElementById('lng').value);
+                const type = document.getElementById('detectionType').value;
+                const severity = document.getElementById('severity').value;
+                
+                if (isNaN(lat) || isNaN(lng)) {
+                    showToast('Invalid GPS coordinates!', 'danger');
+                    showLoading(false);
+                    return;
+                }
+                
+                const colors = {oil:'#dc3545',ship:'#28a745',debris:'#17a2b8',algae:'#ffa500'};
+                const icons = {oil:'oil-can',ship:'ship',debris:'trash',algae:'leaf'};
+                const fines = {critical:5000000,high:3000000,medium:1500000,low:500000};
+                const radii = {critical:8000,high:5000,medium:2500,low:1000};
+                
+                const fine = fines[severity] + Math.floor(Math.random() * 1000000);
+                const color = colors[type];
+                const icon = icons[type];
+                
+                const markerIcon = L.divIcon({
+                    html: `<div style="position:relative;width:50px;height:50px;">
+                        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:${color};width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;border:3px solid white;box-shadow:0 4px 15px rgba(0,0,0,0.4);animation:markerPulse 2s infinite;">
+                            <i class="fas fa-${icon}" style="font-size:20px;"></i>
+                        </div>
+                    </div>`,
+                    iconSize: [50,50],
+                    iconAnchor: [25,25]
+                });
+                
+                const marker = L.marker([lat,lng], {icon:markerIcon}).addTo(map);
+                
+                if (type==='oil' || type==='algae') {
+                    L.circle([lat,lng], {
+                        radius: radii[severity],
+                        color: color,
+                        fillColor: color,
+                        fillOpacity: 0.15,
+                        weight: 2,
+                        dashArray: '8,12'
+                    }).addTo(map);
+                }
+                
+                marker.bindPopup(`
+                    <div style="min-width:320px;font-family:inherit;">
+                        <div style="background:${color};color:white;padding:15px;margin:-15px -20px 15px -20px;border-radius:8px 8px 0 0;">
+                            <h3 style="margin:0;font-size:18px;"><i class="fas fa-${icon}"></i> ${type.toUpperCase()} DETECTED</h3>
+                        </div>
+                        ${uploadImg?`<img src="${uploadImg}" style="width:100%;border-radius:8px;margin:10px 0;box-shadow:0 2px 10px rgba(0,0,0,0.2);">`:''}
+                        <div style="background:#f8f9fa;padding:12px;border-radius:8px;margin:10px 0;border-left:4px solid ${color};">
+                            <p style="margin:5px 0;"><strong>📍 GPS:</strong> ${lat.toFixed(6)}°, ${lng.toFixed(6)}°</p>
+                            <p style="margin:5px 0;"><strong>🎯 Precision:</strong> ±5 meters</p>
+                            <p style="margin:5px 0;"><strong>⏰ Time:</strong> ${new Date().toLocaleString()}</p>
+                            <p style="margin:5px 0;"><strong>⚠ Severity:</strong> <span style="color:${color};font-weight:700;">${severity.toUpperCase()}</span></p>
+                        </div>
+                        ${type==='oil'?`
+                            <div style="background:#fff3cd;padding:12px;border-radius:8px;margin:10px 0;border-left:4px solid #ffa500;">
+                                <h4 style="color:#856404;margin:0 0 8px 0;"><i class="fas fa-flag"></i> Responsible Authority</h4>
+                                <p style="margin:5px 0;"><strong>🏴 India Coast Guard</strong></p>
+                                <p style="margin:5px 0;font-size:12px;">Mumbai Regional Command</p>
+                            </div>
+                            <div style="background:#f8d7da;padding:12px;border-radius:8px;margin:10px 0;border-left:4px solid #dc3545;">
+                                <h4 style="color:#721c24;margin:0 0 8px 0;"><i class="fas fa-dollar-sign"></i> Environmental Fine</h4>
+                                <p style="font-size:28px;font-weight:800;color:#dc3545;margin:8px 0;">$${fine.toLocaleString()}</p>
+                            </div>
+                            <div style="background:#f8d7da;padding:12px;border-radius:8px;border-left:4px solid #dc3545;">
+                                <p style="color:#721c24;font-weight:bold;margin:0;font-size:14px;">⛔ SHIP PERMIT CANCELLED</p>
+                                <p style="margin:6px 0 0 0;font-size:12px;color:#721c24;">License suspended immediately</p>
+                            </div>
+                        `:''}
+                    </div>
+                `).openPopup();
+                
+                customMarkers.push({marker,type,lat,lng});
+                map.setView([lat,lng], 8);
+                
+                if (type==='oil') { 
+                    oilCount++; 
+                    fineTotal+=fine; 
+                }
+                customCount++;
+                
+                updateStats();
+                showLoading(false);
+                showToast(`${type.toUpperCase()} detected successfully!`, type==='oil'?'danger':'success');
+                
+                document.getElementById('lat').value = (lat+(Math.random()-0.5)*0.01).toFixed(6);
+                document.getElementById('lng').value = (lng+(Math.random()-0.5)*0.01).toFixed(6);
+            }, 1500);
+        }
+
+        function setLoc(lat,lng) {
+            document.getElementById('lat').value = lat;
+            document.getElementById('lng').value = lng;
+            map.setView([lat, lng], 6);
+            showToast('Location set', 'info');
+        }
+
+        function randomCoords() {
+            const locs = [[18.523456,71.467890],[35.234123,-39.876543],[30.456789,169.890123],[-23.456789,56.789012]];
+            const loc = locs[Math.floor(Math.random()*locs.length)];
+            document.getElementById('lat').value = loc[0];
+            document.getElementById('lng').value = loc[1];
+            showToast('Random coordinates generated', 'info');
+        }
+
+        function handleImg(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = event => {
+                    uploadImg = event.target.result;
+                    showToast('Image uploaded successfully', 'success');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function centerMap() {
+            map.setView([20,0], 2);
+            showToast('Map centered', 'info');
+        }
+
+        function autoDetection() {
+            if (!autoInterval) {
+                autoInterval = setInterval(() => {
+                    randomCoords();
+                    setTimeout(addCustomMarker, 500);
+                }, 8000);
+                showToast('Auto-detection enabled (every 8s)', 'success');
+            } else {
+                clearInterval(autoInterval);
+                autoInterval = null;
+                showToast('Auto-detection disabled', 'info');
+            }
+        }
+
+        function exportData() {
+            const data = {
+                ships: ships.map(s => ({name:s.name,type:s.type,lat:s.lat,lng:s.lng,ocean:s.ocean})),
+                pollution: pollutionIncidents.map(p => ({type:p.type,lat:p.lat,lng:p.lng,ocean:p.ocean})),
+                custom: customMarkers.map(m => ({type:m.type,lat:m.lat,lng:m.lng})),
+                stats: {
+                    totalShips: ships.length,
+                    oilSpills: oilCount,
+                    customDetections: customCount,
+                    totalFines: fineTotal
+                },
+                exportTime: new Date().toISOString()
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `marine-data-${Date.now()}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+            showToast(`Exported ${ships.length + pollutionIncidents.length + customMarkers.length} records`, 'success');
+        }
+
+        function clearAll() {
+            if (confirm('⚠ Clear all custom detection markers?')) {
+                customMarkers.forEach(m => map.removeLayer(m.marker));
+                customMarkers = [];
+                customCount = 0;
+                fineTotal = 0;
+                updateStats();
+                showToast('Custom detections cleared', 'success');
+            }
+        }
+
+        function filterType(type) {
+            if (type === 'all') {
+                showToast(`Total ships: ${ships.length}`, 'info');
+            } else if (type === 'oil') {
+                showToast(`Oil spills: ${oilCount}`, 'danger');
+            } else if (type === 'ship') {
+                showToast(`Custom detections: ${customCount}`, 'info');
+            }
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+
+        function updateStats() {
+            document.getElementById('totalShips').textContent = ships.length;
+            document.getElementById('oilSpills').textContent = oilCount;
+            document.getElementById('customDetections').textContent = customCount;
+            document.getElementById('totalFines').textContent = fineTotal > 0 ? '$' + (fineTotal/1000000).toFixed(1) + 'M' : '$0';
+        }
+
+        function showToast(msg, type) {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `<strong>${msg}</strong>`;
+            document.getElementById('toastContainer').appendChild(toast);
+            setTimeout(() => toast.remove(), 3500);
+        }
+
+        // Ocean filter functionality
+        document.querySelectorAll('.ocean-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.ocean-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                
+                const ocean = this.getAttribute('data-ocean');
+                
+                shipMarkers.forEach(marker => {
+                    if (ocean === 'all' || marker.shipData.ocean === ocean) {
+                        map.addLayer(marker);
+                    } else {
+                        map.removeLayer(marker);
+                    }
+                });
+                
+                pollutionMarkers.forEach(marker => {
+                    if (ocean === 'all' || marker.incidentData.ocean === ocean) {
+                        map.addLayer(marker);
+                    } else {
+                        map.removeLayer(marker);
+                    }
+                });
+
+                showToast(ocean === 'all' ? 'Showing all oceans' : `Filtered: ${ocean.replace(/-/g, ' ')}`, 'info');
+            });
+        });
+
+        // Ship type filter functionality
+        document.querySelectorAll('.ship-type-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.ship-type-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                
+                const shipType = this.getAttribute('data-type');
+                
+                shipMarkers.forEach(marker => {
+                    if (shipType === 'all' || marker.shipData.type === shipType) {
+                        map.addLayer(marker);
+                    } else {
+                        map.removeLayer(marker);
+                    }
+                });
+
+                showToast(shipType === 'all' ? 'Showing all ship types' : `Filtered: ${shipType} ships`, 'info');
+            });
+        });
+    </script>
+</body>
+</html>
